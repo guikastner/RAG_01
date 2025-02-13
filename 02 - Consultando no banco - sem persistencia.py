@@ -1,0 +1,70 @@
+import os
+import authorization
+from langchain import hub
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_core.output_parsers import StrOutputParser as stro
+from langchain_core.runnables import RunnablePassthrough
+from langchain_chroma import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+
+os.environ['OPENAI_API_KEY'] = authorization.apikey
+
+model = ChatOpenAI(
+    model="gpt-4"
+    )
+
+pdf_path = 'p53ug_en.pdf'
+#pdf_path = 'laptop_manual.pdf'
+loader = PyPDFLoader(pdf_path)
+
+docs = loader.load()
+
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=200,
+)
+
+chunks = text_splitter.split_documents(
+    documents=docs
+)
+
+
+embedding_model = OpenAIEmbeddings(
+    model="text-embedding-3-small"
+)
+
+vector_store = Chroma.from_documents(
+    documents=chunks,
+    embedding=embedding_model,
+    collection_name='laptop_manual'
+    )
+
+retriever_vector = vector_store.as_retriever()
+
+result =retriever_vector.invoke(
+    'qual é a bateria do laptop?',
+) # pequenos pedaços de vetores no banco de dados
+
+prompt = hub.pull('rlm/rag-prompt')
+
+#print(prompt)
+
+rag_chain = (
+    {
+        'context': retriever_vector,
+        'question': RunnablePassthrough(),
+    }
+    | prompt
+    | model
+    | stro()
+)
+
+try:
+    while True:
+        question = input('Pergunta: ')
+        response = rag_chain.invoke(question)
+        print(response)
+except KeyboardInterrupt:
+    exit()
