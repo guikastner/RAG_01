@@ -43,6 +43,6 @@ retriever_vector = vector_store.as_retriever()
 
 result =retriever_vector.invoke(
     'qual é a bateria do laptop?',
-)
+) # pequenos pedaços de vetores no banco de dados
 
 print(result)
