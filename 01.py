@@ -1,7 +1,8 @@
 import os
 import authorization
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_openai import ChatOpenAI
+from langchain_chroma import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
@@ -26,4 +27,22 @@ chunks = text_splitter.split_documents(
     documents=docs
 )
 
-print(chunks)
+#print(chunks)
+
+embedding_model = OpenAIEmbeddings(
+    model="text-embedding-3-small"
+)
+
+vector_store = Chroma.from_documents(
+    documents=chunks,
+    embedding=embedding_model,
+    collection_name='laptop_manual'
+    )
+
+retriever_vector = vector_store.as_retriever()
+
+result =retriever_vector.invoke(
+    'qual é a bateria do laptop?',
+)
+
+print(result)
